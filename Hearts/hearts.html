@@ -24,10 +24,12 @@
       function repaint() {
         inject("PLAYERS", Player.showAll());
         inject("CARDS", Loc.showAll());
+        inject("HEARTBREAK", heartBreak ? cSpan("red", "heart break") : "");
+        inject("LEDCARD", Trick.led == null ? "" : Trick.led.name);
       }
       window.onload = function () {
         t = new Trick();
-        Player.createAll("jojo haha karen veno reggae");
+        Player.createAll("Archie Betty Jughead Veronica Reggie");
         deck = new Loc("Deck", null);
         kitty = new Loc("Kitty", null);
         Card.createAll();
@@ -48,7 +50,7 @@
         nHand = (52 - nKitty) / nPlayers; // num of cards in each hand
       var takeAction;
       var selCard;
-      //----------Trick----------
+      //------------------Trick----------------
       function Trick() {
         this.loc = new Loc("Trick", null);
         this.leader = null; // a player
@@ -56,7 +58,7 @@
         this.led = null; // a card
         this.top = null; // a card
       }
-      //------------Location--------
+      //------------------Location--------------
       function Loc(name, player) {
         this.name = name;
         this.player = player; //player can be null
@@ -83,7 +85,7 @@
         }
         return res;
       };
-      //------------player-------------
+      //----------------Player-------------
       function Player(name) {
         this.name = name;
         this.score = 0;
@@ -111,7 +113,7 @@
       Player.prototype.fullname = function () {
         return this.name + " " + this.score;
       }; // non static function equivalent to java
-      //---------------Cards--------------
+      //------------------Cards------------------
       function Card(iS, iR) {
         this.iS = iS;
         this.iR = iR;
@@ -143,6 +145,13 @@
           alert("It is " + player.name + "'s turn!");
           return;
         }
+        if (iTrick == 0) {
+          // the first trick
+          playerPassingCard();
+        } else {
+          // playing on trick
+          playerPlayCard();
+        }
         selCard.loc = t.loc; // move the selected card out of player's hand
         repaint();
       };
@@ -168,7 +177,7 @@
       function cSpan(c, x) {
         return '<span style="color:' + c + '">' + x + "</span>";
       }
-      //----------Deal--------
+      //--------------Deal--------------
       function deal() {
         var locA = []; //create an array of locations
         for (var i = 0; i < nKitty; i++) {
@@ -202,7 +211,7 @@
           arr[k] = t;
         }
       }
-      // --------play tricks-------
+      // -------------play tricks------------
       function play1stTrick() {
         iTrick = 1;
         heartBreak = false;
@@ -213,9 +222,37 @@
         inject("ACTION", "NO BUTTON ACTION");
         takeAction = doNothing;
       }
-      // ---------helpers----------
+      function playerPassingCard() {}
+      function leading() {
+        // if there's no lead in the trick, then you are leading
+        return t.led == null;
+      }
+      function validLead() {}
+      function validFollow() {}
+      function followSuit() {
+        return selCard.iS == t.led.iS;
+      }
+      function playerPlayCard() {
+        if (leading()) {
+          if (!validLead) {
+            alert(iTrick == 1 ? "Lead low club" : "Hearts not broken");
+            return;
+          }
+          t.led = selCard;
+          t.top = t.led;
+          t.winner = player;
+        } else {
+          if (!validFollow) {
+            return;
+          }
+          if (followSuit() && selCard.iR > t.top.iR) {
+            t.top = selCard;
+            t.winner = player;
+          }
+        }
+      }
+      // -------------helpers---------------
       function whoHasMinClub() {
-        console.info(Card.all);
         for (var i = 0; i <= nKitty; i++) {
           var c = Card.all[i],
             p = c.loc.player;

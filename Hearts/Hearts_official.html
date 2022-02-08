@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Hearts</title>
+    <style>h2 {color: red;}  .LAB {color:blue}</style>
+    <script>
+function inject(loc, val){document.getElementById(loc).innerHTML = val;}
+function setNdx(list, item){item.ndx = list.length; list.push(item);}
+function spLAB(x){return '<span class="LAB">'+x+'</span>';}
+function cSpan(c,x){return '<span style="color:'+c+'">'+x+'</span>';}
+function lab(x){return '<span class="LAB">'+x+'</span>'}
+function msg(x){inject('MSG', x);}
+function nada(){alert("the button does nothing!");}
+
+//--locations
+var deck, kitty, t;
+// -- game state
+var iRound = 1, iTrick = 0, nPlayer = 3;
+var player, minClub, heartBreak;
+var nKitty = 52%nPlayer, nHand = (52-nKitty)/nPlayer;
+var blockCardEvents = true;
+
+window.onload = function(){
+  t = new Trick();
+  Player.createAll('Archie Betty Jughead Veronica Reggie');
+  deck = new Loc('Deck', null), kitty = new Loc('Kitty');
+  Card.createAll();
+  new PassStyle('LEFT', 1); new PassStyle('RIGHT', nPlayer-1);
+  new PassStyle('ACROSS', 2); new PassStyle('Right of Right', nPlayer - 2);
+
+  inject('ACTION', 'deal'); takeAction = deal;
+  repaint();
+}
+
+function repaint(){
+  inject('PLAYERS', Player.showAll());
+  inject('PLAYER', player.name);
+  inject('IROUND', iRound); inject('ITRICK', iTrick);
+  inject('CARDS', Loc.showAll());
+  inject('HEARTBREAK', (heartBreak)?cSpan('red', 'Heart Break'):'');
+  if(iTrick == 0){inject('HEARTBREAK', 'Passing Style: '+PassStyle.cur.name);}
+  inject('LC', (t.led == null)?'':t.led.name());
+}
+
+// -----booleans----
+// -- many/most boo vars:  represent varient rules so set for your prefered game style
+// -- note: I have not implemented all of these varients so change may NOT affect game play
+
+var noKitty = false; // else 3 players discard 2d, 5 player discard 2d & 2c
+var kittyGoesToFirstTrick = true; // else goes on heartbreak trick
+var deal4PlayerKitty = false; // in 4 player game deal 12 cards and 4 into kitty
+var kittyVisible = true; // else: only visible to player who wins kitty
+var kittyGoesToHand = false; // else: kitty goes to winner's hand, who discards back to hand size
+var passIsOptional = false; // if you don't pass cards, those passed to you go to your target.
+var dirtyLizBreaksHearts = true;
+var firstTrickIsClean = true;
+var shootTheSun = false; // shoot Sun == taking all tricks, like shoot Moon but worth 52
+var playLizASAP = false; // for example you are void in led suit, or As Ks is on trick
+var twoOfClubsLeads = true; // else dealer's left leads any legal card
+var heartbreak = false; // false until someone plays a heart
+var noTie = false; // if noTie, play till clear winner.
+var resetScores = []; // if this non-empty, hitting exactly resets score to zero
+
+// --boolean functions: unlike boo vars most of these calculate game state
+var pIsLeading, pIsFollowing, pCanFollowSuit,
+    scIsMinClub, scIsHeart, scIsDirtyLiz, scIsClean, scIsLegalLead, scIsLegalFollow,
+    trickBreaksHearts;
+
+//------------------PLAYER----------------------
+function Player(name){
+  this.name = name; setNdx(Player.all, this); player = Player.all[0];
+  this.score = 0; this.handScore = 0; tricksTaken = 0;
+  this.hand = new Loc('hand', this); this.pass = new Loc('pass', this);
+}
+Player.all = [];
+Player.createAll = function(str){
+  var a = str.split(' ');
+  for(var i=0;i<a.length;i++){new Player(a[i]);}
+}
+Player.showAll = function(){
+  res = '', sep = '';
+  for(var i = 0; i<nPlayer; i++){
+    var p = Player.all[i];
+    var hs = (p.handScore == 26)? cSpan('red', '26 shot the moon!') : p.handScore;
+    res += sep + p.name + ' ' + p.score + '/'  + hs;
+    sep = ', ';
+  }
+  return res;
+}
+
+Player.prototype.left = function(){return Player.all[(this.ndx + 1)%nPlayer];}
+
+
+
+//-------------------CARD-------------------------
+function Card(iS, iR){
+  this.iS = iS; this.iR = iR; this.loc = deck; setNdx(Card.all, this);
+  this.bad = (iS == 3) ? 1 : 0;
+  if(iS == 2 && iR == 10){this.bad = 13;} // Queen of Spaces is 13 bad points
+  this.visName = Card.ranks[iR] + cSpan((iS%2==0 ? 'black':'red'), Card.suits[iS]);
+  this.hidName = cSpan('LightGray', Card.ranks[iR]+Card.suits[iS]);
+}
+Card.all = [];
+Card.ranks = '2 3 4 5 6 7 8 9 T J Q K A'.split(' ');
+Card.suits = ['&clubs;', '&diams;', '&spades;', '&hearts;'];
+Card.rbSuit = ['&clubs;', cSpan('red', '&diams;'), '&spades;', cSpan('red', '&hearts;')];
+Card.createAll = function(){
+  for(var iS=0;iS<4;iS++){for(var iR=0;iR<13;iR++){new Card(iS,iR);}}
+}
+Card.showAll = function(){
+  var res = '', sep = '';
+  for(var i=0; i<Card.all.length; i++){
+    var c = Card.all[i];
+    res += sep + c.name(); sep = ' ';
+  }
+  return res;
+}
+Card.event = function(k){
+  if(blockCardEvents){return;}
+  selCard = Card.all[k];
+  inject('H1', selCard.name());
+  if(iTrick == 0){playerPassingCard();}else{playerPlaysCard();}
+  repaint();
+}
+
+Card.prototype.sel = function(){
+  return '<span onclick="Card.event('+this.ndx+');">'+this.name()+'</span>';
+}
+
+Card.prototype.name = function(){return Card.ranks[this.iR] + Card.rbSuit[this.iS];}
+
+//-------------------LOC--------------------------
+function Loc(name, player){
+  this.player = player; // this can be null
+  this.name = name;
+  if(player != null){ this.name = player.name + "'s " +name;}
+  setNdx(Loc.all, this);
+}
+Loc.all = [];
+Loc.prototype.cardList = function(){
+  var res = lab(this.name+':');
+  for(var i = 0; i<52;i++){
+    if(Card.all[i].loc == this){res += ' ' + Card.all[i].sel();}
+  }
+  return res;
+}
+Loc.showAll = function(){
+  var res = '';
+  for(var i = 0; i<Loc.all.length; i++){res += '<br/>' + Loc.all[i].cardList();}
+  return res;
+}
+
+//---------------------------TRICK------------------
+function Trick(){
+  this.loc = new Loc('Trick', null);
+  this.winner = null; this.top = null; this.led = null; this.leader = null;
+}
+
+function playFirstTrick(){
+  blockCardEvents = false;
+  iTrick = 1; heartBreak = false; t.led == null;
+  player = whoHasMinClub(); // also sets minClub
+  msg(player.name + ' should lead lowest club;');
+  inject('ACTION', 'no Button Action'); takeAction = nada;
+  repaint();
+}
+function whoHasMinClub(){
+  for(var i=0; i<12; i++){
+    var c = Card.all[i], p = c.loc.player;
+    if(p != null){minClub = c; return p;}
+  }
+  return p; // should never happen
+}
+
+// -- booleans involved with trick taking ----
+function leading(){return t.led == null;}
+function firstTrick(){return iTrick == 1;}
+function allBad(){ // the unlikely occurance that a player has only bad cards
+  for(var i=0; i<52; i++){
+    var c = Card.all[i];
+    if(c.loc == player.hand && c.bad == 0){return false;}
+  }
+  return true;
+}
+function followsSuit(){return selCard.iS == t.led.iS;}
+function clean(){return selCard.bad == 0;}
+function validLead(){
+  return (firstTrick()) ? selCard == minClub : clean() || heartBreak || allBad();
+}
+function validFollow(){
+  if(followsSuit()) {return true;}
+  if(canFollow()){alert("follow suit"); return false;} // must follow if you can
+  if(firstTrick() && !allBad()){alert("1st trick is clean"); return false;}
+  return true;
+}
+function canFollow(){
+  for(var i=0;i<52;i++){
+    var c = Card.all[i];
+    if(c.loc == player.hand && c.iS == t.led.iS){return true;}
+  }
+  return false;
+}
+
+// ---- trick taking ---------------
+function playerPlaysCard(){
+  if(selCard.loc.player != player){alert("It is "+player.name+"'s move."); return;}
+  if(leading()){
+    if(!validLead()){alert(firstTrick() ? "Lead Low Club": "Hearts not yet broken"); return;}
+    t.led = selCard; t.top = selCard; t.winner = player; t.leader = player;
+  } else {
+    if(!validFollow()){return;}
+    if(followsSuit() && selCard.iR > t.top.iR){t.top = selCard; t.winner = player;}
+  }
+  selCard.loc = t.loc;  // card joins trick
+  player = player.left();
+  if(player == t.leader){nextTrick();}
+}
+
+function nextTrick(){
+  scoreTrick(); iTrick++; t.leader = t.winner; player = t.leader; t.led = null;
+  msg(player.name + " gets the lead");
+  if(iTrick > nHand){nextRound();}
+}
+
+function nextRound(){
+  scoreHand();
+  if(!gameOver()){iRound++; playRound(); return;}
+  announceWinner();
+}
+
+function scoreHand(){
+  shootTheMoon();
+  for(var i=0;i<nPlayer;i++){
+    var p = Player.all[i];
+    p.score += p.handScore;
+    p.handScore = 0;
+  }
+}
+
+function scoreTrick(){
+  var total = 0;
+  for(var i in Card.all){
+    var c = Card.all[i];
+    if(c.loc == t.loc || c.loc == kitty){total += c.bad; c.loc = deck;}
+  }
+  if(total >0){heartBreak = true;}
+  t.winner.handScore += total;
+}
+
+function shootTheMoon(){ // tests and adjusts scores if it happens
+  // see if any player got 26 points
+  var shot = false, p, shooter;
+  for(var i=0;i<nPlayer;i++){
+    p = Player.all[i];
+    if(p.handScore == 26){shooter = p; p.handScore = -26; shot = true;}
+  }
+  if(!shot){return;}
+  for(var i=0;i<nPlayer;i++){
+    p = Player.all[i];
+    p.handScore += 26;
+  }
+  msg('Looks like '+shooter.name+" shot the moon");
+}
+
+function playRound(){iTrick = 0; inject('ACTION', 'deal'); takeAction = deal;}
+function announceWinner(){inject('ACTION', 'Game Over'); takeAction = nada;}
+function gameOver(){
+  var max = 0;
+  for(var i=0;i<nPlayer;i++){
+    p = Player.all[i];
+    if(p.score > max){max = p.score;}
+  }
+  return max >= 100;
+}
+//----------------------passing-------------------
+function PassStyle(name, delta){this.name = name; this.delta = delta; setNdx(PassStyle.all, this);}
+PassStyle.all = []
+new PassStyle('HOLD',0);
+PassStyle.cur = PassStyle.all[0];  // default is no passing
+PassStyle.set = function(){PassStyle.cur = PassStyle.all[iRound % nPlayer];}
+PassStyle.nPass;
+PassStyle.whoTo = function(p){return Player.all[(p.ndx + PassStyle.cur.delta) % nPlayer];}
+
+PassStyle.pass = function(){
+  if(selCard.loc.player == player){
+    if(selCard.loc == player.pass){
+      selCard.loc = player.hand; PassStyle.nPass++;
+    } else if(selCard.loc == player.hand && PassStyle.nPass >0){
+      selCard.loc = player.pass; PassStyle.nPass--;
+    }
+    passButtonText();
+  } else {
+    alert('It is '+player.name+"'s turn.");
+  }
+}
+
+function playerPassingCard(){ PassStyle.pass();}
+
+function passButtonText(){
+    msg(player.name + ' passes to ' + PassStyle.whoTo(player).name);
+    if(PassStyle.nPass == 0){
+      inject('ACTION', 'next Passer'); takeAction = nextPasser;
+    } else {
+      inject('ACTION', 'Choose '+PassStyle.nPass); takeAction = nada;
+    }
+}
+
+function nextPasser(){
+  player = player.left();
+  PassStyle.nPass = 3;
+  passButtonText();
+  if(player == Player.all[0]){donePassing();}
+  repaint();   // because called from button
+}
+
+function donePassing(){
+  for(var i=0; i<52; i++){
+    var c = Card.all[i], p = c.loc.player;
+    if(p != null && c.loc == p.pass){
+      var pTo = PassStyle.whoTo(p);
+      c.loc = pTo.hand;
+    }
+  }
+  blockCardEvents = true;
+  inject('ACTION', 'play first Trick'); takeAction = playFirstTrick;
+}
+
+function startPassing(){
+  blockCardEvents = false;
+  player = Player.all[0]; PassStyle.nPass = 3;
+  PassStyle.cur = PassStyle.all[iRound % nPlayer];
+  iTrick = 0;
+  passButtonText();
+  if(PassStyle.cur.delta == 0){donePassing();}  // can skip passing if style is HOLD
+  repaint();
+}
+
+//------------------deal-----------
+function deal(){
+  var locA = []; //create array of locations.
+  for(var i = 0;i<nKitty; i++){locA.push(kitty);}
+  for(var p = 0; p<nPlayer; p++){
+    for(var i=0;i<nHand;i++){locA.push(Player.all[p].hand);}
+  }
+  fyShuffle(locA, 52);
+  for(var i = 0; i<52; i++){Card.all[i].loc = locA[i];}
+  repaint();
+  player = null;
+  takeAction = startPassing; inject('ACTION', 'pass cards');
+  repaint();
+}
+
+function rnd(k){return Math.floor(Math.random()*k);}
+function fyShuffle(a, n){
+  for(var i = n; i>1; i--){
+    var k = rnd(i);
+    var t = a[i-1]; a[i-1] = a[k]; a[k] = t; // swap rnd with end
+  }
+}
+
+</script>
+</head><body>
+<h1 id="H1">Hearts</h1>
+Players: <span id="PLAYERS">players</span>
+<BR/><BR/>Current Player: <span id="PLAYER">player</span>
+<button id="ACTION" onclick="takeAction();">action</button>
+<br/>Round: <span id="IROUND">iRound</span> Trick: <span id="ITRICK">iTrick</span>
+<div id="MSG">this is a message block</div>
+Lead Card: <span id="LC">lead card</span>
+<br/><span id="HEARTBREAK">heartbreak</span>
+<div id="CARDS">cards go here</div>
+</body></html>
