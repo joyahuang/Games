@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo</title>
+    <style > #H{color:green} p {color:red} </style>
+    <script>
+        function inject(loc,val){
+            document.getElementById(loc).innerHTML=val;
+        }
+        // alert("hello world!");//stops everything->why avoid using alert
+        var i=5;
+        function foo(x) {alert(x);}
+        var bar=function (x){alert(x);}
+        // alert(bar(9));// 9 then undefined
+        window.onload=function(){
+            // after the body document loads
+            // alert("window onload");
+            // inject("H","Fubar");
+        }
+        function sally(){
+            inject('H', '<button>Fubar</button>' + i++)
+        }
+        function Person(first,last,age){
+            this.first=first;
+            this.last=last;
+            this.age=age;
+        }
+        var p=new Person("John","Doe",99);
+        Person.prototype.name=function(){return this.first+" "+this.last;};
+        Person.prototype.name2=function(){return this.last+" "+this.first;};
+        // alert(p.name2());
+
+    </script>
+</head>
+<body>
+    <h1>Heading</h1>
+    word
+    wrap
+    <p >paragragh1 text fo<span onclick="sally();">o</span>d <span id="H">drink</span> <b>sleep</b> play</p>
+    <div>This is a division.</div>
+    <p style="color: blue;">paragragh2</p>
+    <button onclick="sally();">Click Me!</button>
+
+    <p>paragragh3</p>
+</body>
+</html>
