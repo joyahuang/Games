@@ -2,6 +2,8 @@
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 
 public class Crypto extends Window {
@@ -12,7 +14,7 @@ public class Crypto extends Window {
       W = 20, H = 45;
   public static final G.V SPACE = new G.V(W, 0),// space between cells
       START = new G.V(xM, yM),//start position
-      NL=new G.V(0,lineGap+H);//new line
+      NL = new G.V(0, lineGap + H);//new line
   public static Cell.List cells = new Cell.List();
   public static Font font = new Font("Verdana", Font.PLAIN, 20);
 
@@ -21,10 +23,10 @@ public class Crypto extends Window {
     // test
     Cell c = new Cell(Pair.alpha[0]);
     c.p.guess = "B";
-    cells.add(c);
-    cells.add(new Cell(Pair.alpha[1]));
+    new Cell(Pair.alpha[1]);
     Cell.newLine();
-    cells.add(new Cell(Pair.alpha[2]));
+    new Cell(Pair.alpha[2]);
+    Cell.selected = c;
   }
 
   public static void main(String[] args) {
@@ -33,10 +35,43 @@ public class Crypto extends Window {
   }
 
   public void paintComponent(Graphics g) {
-
     G.whiteBackground(g);
     g.setFont(font);
     cells.show(g);
+  }
+
+  @Override
+  public void keyTyped(KeyEvent ke) {
+    char c = ke.getKeyChar();
+    if (c >= 'a' && c <= 'z') {
+      c = (char) (c - 'a' + 'A');// shift lower case to upper case
+    }
+    if (Cell.selected != null) {
+      Cell.selected.p.guess = (c >= 'A' && c <= 'Z') ? "" + c : "";
+      repaint();
+    }
+
+  }
+
+  @Override
+  public void keyPressed(KeyEvent ke) {
+    int vk = ke.getKeyCode();//virtual key
+    if(Cell.selected!=null){
+      if (vk == KeyEvent.VK_LEFT) {
+        Cell.selected.left();
+      } else if (vk == KeyEvent.VK_RIGHT) {
+        Cell.selected.right();
+      }
+      repaint();
+    }
+
+  }
+
+  @Override
+  public void mouseClicked(MouseEvent me) {
+    int x = me.getX(), y = me.getY();
+    Cell.selected = cells.hit(x, y);
+    repaint();
   }
 
   //--------------Pair----------------
@@ -63,32 +98,53 @@ public class Crypto extends Window {
   public static class Cell {
 
     public Pair p;
+    public int idx;
     public G.V loc = new G.V();
-    public static G.V nextLoc=new G.V(START);
-    public static G.V nextLine=new G.V(START);
-    public static G.VS vs=new G.VS(0,0,W,H);
+    public static G.V nextLoc = new G.V(START);
+    public static G.V nextLine = new G.V(START);
+    public static G.VS vs = new G.VS(0, 0, W, H);
+    public static Cell selected = null;
+
 
     public Cell(Pair p) {
       this.p = p;
+      idx = cells.size();
+      cells.add(this);
       loc.set(nextLoc);
       nextLoc.add(SPACE);
     }
 
     public void show(Graphics g) {
-      vs.loc.set(loc);
-      vs.fill(g,Color.RED);
+      if (this == Cell.selected) {
+        vs.loc.set(loc);
+        vs.draw(g, Color.RED);
+      }
       g.setColor(Color.BLACK);
       g.drawString("" + p.code, loc.x, loc.y + dCode);
       g.drawString(p.guess, loc.x, loc.y + dGuess);
     }
-    public boolean hit(int x,int y){
+
+    public boolean hit(int x, int y) {
       vs.loc.set(loc);
-      return vs.hit(x,y);
+      return vs.hit(x, y);
     }
-    public static void newLine(){
+
+    public void left() {
+      if (idx > 0) {
+        Cell.selected = cells.get(idx - 1);
+      }
+    }
+    public void right() {
+      if (idx <cells.size()-1) {
+        Cell.selected = cells.get(idx + 1);
+      }
+    }
+
+    public static void newLine() {
       nextLine.add(NL);
       nextLoc.set(nextLine);
     }
+
     //--------------Cell.List-----------
     public static class List extends ArrayList<Cell> {
 
@@ -97,6 +153,15 @@ public class Crypto extends Window {
 
           c.show(g);
         }
+      }
+
+      public Cell hit(int x, int y) {
+        for (Cell c : this) {
+          if (c.hit(x, y)) {
+            return c;
+          }
+        }
+        return null;
       }
     }
   }
