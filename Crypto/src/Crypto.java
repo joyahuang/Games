@@ -21,12 +21,13 @@ public class Crypto extends Window {
   public Crypto() {
     super("Cryptogram", 1000, 800);
     // test
-    Cell c = new Cell(Pair.alpha[0]);
-    c.p.guess = "B";
-    new Cell(Pair.alpha[1]);
-    Cell.newLine();
-    new Cell(Pair.alpha[2]);
-    Cell.selected = c;
+//    Cell c = new Cell(Pair.alpha[0]);
+//    c.p.guess = "B";
+//    new Cell(Pair.alpha[1]);
+//    Cell.newLine();
+//    new Cell(Pair.alpha[2]);
+//    Cell.selected = c;
+    loadQuote("NOW IS THE TIME FOR ALL GOOD MAN");
   }
 
   public static void main(String[] args) {
@@ -39,7 +40,23 @@ public class Crypto extends Window {
     g.setFont(font);
     cells.show(g);
   }
-
+  public void loadQuote(String str){
+    // TODO: str=validate(str)
+    cells.clear();
+//    Pair.shuffle();//all guesses to zero,
+    for(char c:str.toCharArray()){
+      int iAlpha=c-'A';
+      if(c>='A'&&c<='Z'){
+        new Cell(Pair.alpha[iAlpha]);
+      }else{
+        Cell.space();// move over, leave a gap
+      }
+    }
+  }
+  public String validate(String str){
+    // TODO: remove punctuation, lower case
+    return "";
+  }
   @Override
   public void keyTyped(KeyEvent ke) {
     char c = ke.getKeyChar();
@@ -111,7 +128,7 @@ public class Crypto extends Window {
       idx = cells.size();
       cells.add(this);
       loc.set(nextLoc);
-      nextLoc.add(SPACE);
+      space();
     }
 
     public void show(Graphics g) {
@@ -144,13 +161,15 @@ public class Crypto extends Window {
       nextLine.add(NL);
       nextLoc.set(nextLine);
     }
+    public static void space(){
+      nextLoc.add(SPACE);
+    }
 
     //--------------Cell.List-----------
     public static class List extends ArrayList<Cell> {
 
       public void show(Graphics g) {
         for (Cell c : this) {
-
           c.show(g);
         }
       }
