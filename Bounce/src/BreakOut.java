@@ -249,5 +249,5 @@ public class BreakOut extends Window implements ActionListener {
       return (ball.loc.x + H / 2 - cp) / 10;// sign
     }
   }
-  //-------------------
+
 }
