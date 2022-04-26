@@ -40,6 +40,10 @@ public class GameMenu extends Window {
     y += 20;
     g.drawString("S(n)ake - Press N to play Snake ", x, y);
     y += 20;
+    g.drawString("(M)aze - Press M to play Maze ", x, y);
+    y += 20;
+    g.drawString("Sym(P)aint - Press P to play SymPaint ", x, y);
+    y += 20;
   }
 
   public void keyPressed(KeyEvent ke) {
@@ -76,10 +80,17 @@ public class GameMenu extends Window {
     if (ch == 'N' || ch == 'n') {
       theGame = new Snake();
     }
+    if (ch == 'M' || ch == 'm') {
+      theGame = new Maze();
+    }
+    if (ch == 'P' || ch == 'p') {
+      theGame = new SymPaint();
+    }
     if (theGame != null) {
       // we did set up the game
       theGame.panel = PANEL;
     }
+
     repaint();
   }
 
