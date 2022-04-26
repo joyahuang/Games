@@ -1,4 +1,5 @@
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -6,7 +7,8 @@ import java.awt.event.MouseEvent;
 public class GameMenu extends Window {
 
   public static Color bkColor = new Color(200, 255, 200);// light green
-  public static int x = 100, y = 30;
+  public static int lineHeight = 40;
+  public static int x = 100, y = lineHeight * 4;
   public static Game theGame = null;
 
   public GameMenu() {
@@ -22,28 +24,33 @@ public class GameMenu extends Window {
     g.setColor(bkColor);
     g.fillRect(0, 0, 5000, 5000);
     g.setColor(Color.black);
+    g.setFont(new Font("serif", Font.BOLD, 30));
     g.drawString("Games - Press esc to return to this menu ", x, y);
-    y += 20;
-    g.drawString("(D)estructo - Press D to play Destructo ", x, y);
-    y += 20;
-    g.drawString("(T)etris - Press T to play Tetris ", x, y);
-    y += 20;
-    g.drawString("(S)okoban - Press S to play Sokoban ", x, y);
-    y += 20;
-    g.drawString("(C)rypto - Press C to play Crypto ", x, y);
-    y += 20;
-    g.drawString("(X)ED - Press X to play XED ", x, y);
-    y += 20;
+    y += lineHeight * 2;
+    g.setFont(new Font("serif", Font.PLAIN, 20));
     g.drawString("(B)reakout - Press B to play Breakout ", x, y);
-    y += 20;
+    y += lineHeight;
+    g.drawString("(C)rypto - Press C to play Crypto ", x, y);
+    y += lineHeight;
+    g.drawString("(D)estructo - Press D to play Destructo ", x, y);
+    y += lineHeight;
+    g.drawString("T(e)xt - Press E to play Text ", x, y);
+    y += lineHeight;
     g.drawString("Skun(k) - Press K to play Skunk ", x, y);
-    y += 20;
-    g.drawString("S(n)ake - Press N to play Snake ", x, y);
-    y += 20;
+    y += lineHeight;
     g.drawString("(M)aze - Press M to play Maze ", x, y);
-    y += 20;
+    y += lineHeight;
+    g.drawString("S(n)ake - Press N to play Snake ", x, y);
+    y += lineHeight;
     g.drawString("Sym(P)aint - Press P to play SymPaint ", x, y);
-    y += 20;
+    y += lineHeight;
+    g.drawString("(S)okoban - Press S to play Sokoban ", x, y);
+    y += lineHeight;
+    g.drawString("(T)etris - Press T to play Tetris ", x, y);
+    y += lineHeight;
+    g.drawString("(X)ED - Press X to play XED ", x, y);
+    y += lineHeight;
+
   }
 
   public void keyPressed(KeyEvent ke) {
@@ -85,6 +92,9 @@ public class GameMenu extends Window {
     }
     if (ch == 'P' || ch == 'p') {
       theGame = new SymPaint();
+    }
+    if (ch == 'E' || ch == 'e') {
+      theGame = new Text();
     }
     if (theGame != null) {
       // we did set up the game
